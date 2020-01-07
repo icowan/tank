@@ -1,27 +1,16 @@
-# use golang 1.12
-FROM golang:1.12
+FROM golang:1.13.0-alpine3.10 AS build-env
 
-# maintainer. Author's name and email.
-MAINTAINER eyeblue "eyebluecn@126.com"
+ENV GO111MODULE=on
+ENV GOPROXY=https://goproxy.io,direct
+ENV BUILDPATH=github.com/eyebluecn/tank
+RUN mkdir -p /go/src/${BUILDPATH}
+COPY ./ /go/src/${BUILDPATH}
+RUN cd /go/src/${BUILDPATH} && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go install -v
 
-# work directory.
+FROM alpine:latest
+
+COPY ./build /data/build
+COPY --from=build-env /go/bin/tank /data/build/
+
 WORKDIR /data
-
-# Copy this project to /data
-COPY . /data
-
-# in order to make docker stateless. Prepare a volumn
-VOLUME /data/build/matter
-
-# proxy
-ENV GOPROXY=https://goproxy.io
-
-# prepare the config file
-RUN go build -mod=readonly \
-    && cp -r /data/tank /data/build
-
-# use 6010 as default.
-EXPOSE 6010
-
-# tank as execute file.
-ENTRYPOINT ["/data/build/tank"]
+CMD ["/data/build/tank"]
